@@ -310,6 +310,38 @@ class Sandbox:
     def read_text(self, path: str) -> str:
         return self.read_file(path).decode("utf-8")
 
+    def put_archive(self, dest: str, data: bytes) -> str:
+        """Unpack a tar archive (raw bytes) into `dest`, creating it if needed.
+
+        Handy with `git archive`, which already speaks tar. The trajectory logs the size,
+        not the bytes, so keep archives for setup rather than for agent actions.
+        """
+        container = self._require()
+        target = self._resolve(dest)
+        code, _, err, _ = self._raw_exec(["mkdir", "-p", str(target)], limit=4096)
+        if code != 0:
+            raise SandboxError(f"Couldn't create {target}: {err.strip()}")
+        try:
+            container.put_archive(str(target), data)
+        except APIError as e:
+            raise SandboxError(f"Couldn't unpack into {target}: {e.explanation or e}") from e
+        self._log({"type": "put_archive", "dest": str(target), "size": len(data)}, {"ok": True})
+        return str(target)
+
+    def copy_in(self, local_path: str | Path, dest: str) -> str:
+        """Copy a local file, or the contents of a local directory, into `dest`."""
+        src = Path(local_path)
+        if not src.exists():
+            raise FileNotFoundError(str(src))
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w") as tar:
+            if src.is_dir():
+                for child in sorted(src.iterdir()):
+                    tar.add(child, arcname=child.name)
+            else:
+                tar.add(src, arcname=src.name)
+        return self.put_archive(dest, buf.getvalue())
+
     # ------------------------------------------------------------------ snapshots
 
     def snapshot(self, label: str | None = None) -> str:

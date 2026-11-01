@@ -65,6 +65,17 @@ def test_quick_rewrite_runs_new_code(sandbox):
     assert sandbox.exec("python test_mod.py").stdout == "BBB\n"
 
 
+def test_copy_in_directory(sandbox, tmp_path):
+    src = tmp_path / "proj"
+    (src / "pkg").mkdir(parents=True)
+    (src / "pkg" / "a.py").write_text("X = 1\n")
+    (src / "run.py").write_text("from pkg.a import X\nprint(X + 1)\n")
+    assert sandbox.copy_in(src, "proj") == "/workspace/proj"
+    assert sandbox.exec("cd proj && python run.py").stdout == "2\n"
+    with pytest.raises(FileNotFoundError):
+        sandbox.copy_in(tmp_path / "missing", "x")
+
+
 def test_read_missing_file(sandbox):
     with pytest.raises(FileNotFoundError):
         sandbox.read_file("nope.txt")

@@ -34,6 +34,7 @@ trajectory 3f9c1a2b7d4e on python:3.12-slim, 3 steps
 - **Real timeouts.** Commands that hang get killed at the deadline, along with every child process they spawned. `result.timed_out` tells you it happened.
 - **Capped output.** An agent that prints 2 GB won't take your process down with it. You get the first `max_output_bytes` and a `truncated` flag.
 - **Trajectories.** One JSONL file per sandbox, written step by step so a crash doesn't lose anything. Load it back with `Trajectory.load()`.
+- **Bulk copies.** `sb.copy_in("./my-repo", "repo")` drops a whole directory in, and `sb.put_archive()` takes raw tar bytes straight from `git archive`.
 - **Snapshots and forks.** `sb.snapshot()` freezes the filesystem into an image. `sb.fork()` boots an isolated twin from it, which is how you branch an agent run at step N and try something else.
 - **No stale bytecode.** `PYTHONDONTWRITEBYTECODE=1` is on by default. Without it, an agent that rewrites a file twice in one second at the same size runs the old code, and you'll spend an hour wondering why its correct fix still fails.
 - **An HTTP API.** So agents written in any language, or running on another box, can use it too.
@@ -109,7 +110,7 @@ Plain JSONL. Line one is a header, then one line per step:
 {"type": "step", "index": 0, "timestamp": 1730563200.1, "action": {"type": "exec", "command": "ls"}, "observation": {"exit_code": 0, "stdout": "...", "stderr": "", "duration": 0.04, "timed_out": false, "truncated": false}}
 ```
 
-Action types are `exec`, `write_file`, `read_file` and `snapshot`. File writes keep their full content, so a run can be replayed from the log alone.
+Action types are `exec`, `write_file`, `read_file`, `put_archive` and `snapshot`. File writes keep their full content, so a run can be replayed from the log alone.
 
 ## A note on isolation
 
