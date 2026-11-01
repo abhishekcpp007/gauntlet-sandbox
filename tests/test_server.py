@@ -75,6 +75,8 @@ def test_sandbox_limit(client):
 def test_reaper(client):
     sid = client.post("/sandboxes", json={"image": IMAGE}).json()["id"]
     registry = client.app.state.registry
-    registry.settings.idle_ttl = 0.001
+    assert registry.reap() == []  # fresh sandboxes stay
+    # backdate it instead of shrinking the TTL, so a fast machine can't beat the clock
+    registry.get(sid).last_used -= registry.settings.idle_ttl + 1
     assert registry.reap() == [sid]
     assert client.get(f"/sandboxes/{sid}").status_code == 404
