@@ -110,7 +110,7 @@ Plain JSONL. Line one is a header, then one line per step:
 {"type": "step", "index": 0, "timestamp": 1730563200.1, "action": {"type": "exec", "command": "ls"}, "observation": {"exit_code": 0, "stdout": "...", "stderr": "", "duration": 0.04, "timed_out": false, "truncated": false}}
 ```
 
-Action types are `exec`, `write_file`, `read_file`, `put_archive` and `snapshot`. File writes keep their full content, so a run can be replayed from the log alone.
+Action types are `exec`, `write_file`, `read_file`, `put_archive` and `snapshot`. File writes keep their full content, and archives get saved beside the log as `run.blobs/<sha256>`, so a run can be replayed from what's on disk alone.
 
 ## A note on isolation
 

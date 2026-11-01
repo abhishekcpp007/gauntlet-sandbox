@@ -34,6 +34,14 @@ def sandbox(tmp_path):
 
 @pytest.fixture(scope="session", autouse=True)
 def _cleanup():
+    # every test closes its own sandboxes, this just drops snapshot images from fork tests.
+    # it deliberately leaves containers alone so it can't kill sandboxes other runs own.
     yield
     if DOCKER_OK:
-        Sandbox.cleanup_all(snapshots=True)
+        client = docker.from_env()
+        for img in client.images.list(name="gauntlet-snapshot"):
+            for tag in img.tags:
+                try:
+                    client.images.remove(tag)
+                except docker.errors.APIError:
+                    pass

@@ -313,8 +313,8 @@ class Sandbox:
     def put_archive(self, dest: str, data: bytes) -> str:
         """Unpack a tar archive (raw bytes) into `dest`, creating it if needed.
 
-        Handy with `git archive`, which already speaks tar. The trajectory logs the size,
-        not the bytes, so keep archives for setup rather than for agent actions.
+        Handy with `git archive`, which already speaks tar. When the trajectory is saved
+        to disk, the archive is kept beside it as a blob so the step can be replayed.
         """
         container = self._require()
         target = self._resolve(dest)
@@ -325,7 +325,11 @@ class Sandbox:
             container.put_archive(str(target), data)
         except APIError as e:
             raise SandboxError(f"Couldn't unpack into {target}: {e.explanation or e}") from e
-        self._log({"type": "put_archive", "dest": str(target), "size": len(data)}, {"ok": True})
+        digest = self.trajectory.store_blob(data) if self.trajectory is not None else None
+        self._log(
+            {"type": "put_archive", "dest": str(target), "size": len(data), "sha256": digest},
+            {"ok": True},
+        )
         return str(target)
 
     def copy_in(self, local_path: str | Path, dest: str) -> str:
@@ -389,12 +393,17 @@ class Sandbox:
             except NotFound:
                 pass
         if snapshots:
-            for img in client.images.list(filters={"label": f"{LABEL}.snapshot"}):
-                try:
-                    client.images.remove(img.id, force=True)
-                    removed += 1
-                except (NotFound, APIError):
-                    pass
+            # only images still tagged as raw snapshots. Images built on top of one (like
+            # repo2env's env images) inherit the label but carry their own name, so they stay.
+            for img in client.images.list(name=SNAPSHOT_REPO):
+                for tag in img.tags:
+                    if not tag.startswith(f"{SNAPSHOT_REPO}:"):
+                        continue
+                    try:
+                        client.images.remove(tag)
+                        removed += 1
+                    except (NotFound, APIError):
+                        pass
         return removed
 
     def __repr__(self) -> str:

@@ -76,6 +76,18 @@ def test_copy_in_directory(sandbox, tmp_path):
         sandbox.copy_in(tmp_path / "missing", "x")
 
 
+def test_put_archive_blob_is_kept(sandbox, tmp_path):
+    src = tmp_path / "d"
+    src.mkdir()
+    (src / "x.txt").write_text("hello")
+    sandbox.copy_in(src, "d")
+    step = sandbox.trajectory.steps[-1]
+    assert step.action["type"] == "put_archive"
+    loaded = Trajectory.load(tmp_path / "traj.jsonl")
+    blob = loaded.load_blob(step.action["sha256"])
+    assert len(blob) == step.action["size"]
+
+
 def test_read_missing_file(sandbox):
     with pytest.raises(FileNotFoundError):
         sandbox.read_file("nope.txt")
