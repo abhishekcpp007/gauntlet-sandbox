@@ -30,7 +30,7 @@ trajectory 3f9c1a2b7d4e on python:3.12-slim, 3 steps
 
 ## What you get
 
-- **Safe defaults.** No network, 512 MB of memory, 1 CPU, a pid cap, every Linux capability dropped and `no-new-privileges` on. You opt into more, never out of less.
+- **Safe defaults.** No network, 512 MB of memory, 1 CPU, a pid cap, every Linux capability dropped and `no-new-privileges` on. You opt into more, never out of less. Each of those is asserted from inside a running sandbox rather than trusted to the config: `CapPrm` and `CapEff` are both zero, `mknod` comes back "operation not permitted", `NoNewPrivs` is 1, and the cgroup files really do read 32 and 256 MiB when that is what you asked for. A fork bomb stops at the pid cap and a runaway allocation is killed by the OOM killer, and in both cases the sandbox is still usable afterwards.
 - **Real timeouts.** Commands that hang get killed at the deadline, along with every child process they spawned. `result.timed_out` tells you it happened.
 - **Capped output.** An agent that prints 2 GB won't take your process down with it. You get the first `max_output_bytes` and a `truncated` flag.
 - **Trajectories.** One JSONL file per sandbox, written step by step so a crash doesn't lose anything. Load it back with `Trajectory.load()`.
